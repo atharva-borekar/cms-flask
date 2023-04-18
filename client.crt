@@ -1,0 +1,88 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number: 18 (0x12)
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C=IN, ST=Maharashtra, L=Pune, O=Josh Software Pvt. Ltd., OU=CSM, CN=csm.joshsoftware.com/emailAddress=admin@joshsoftware.com
+        Validity
+            Not Before: Apr 18 09:36:10 2023 GMT
+            Not After : Apr 17 09:36:10 2024 GMT
+        Subject: C=IN, ST=Maharashtra, O=Josh Software Pvt. Ltd., OU=POC, CN=CMS/emailAddress=abc1@xyz.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (2048 bit)
+                Modulus:
+                    00:bd:66:3b:5d:05:57:ae:9b:6b:b2:9b:f3:ac:2a:
+                    cb:c8:42:14:8c:48:2a:14:4a:99:e7:29:8e:2c:47:
+                    ce:6c:01:5f:bc:74:3e:83:e2:d7:19:a4:32:9f:ff:
+                    cb:89:4f:b8:67:09:5e:d5:e3:37:5c:60:e8:de:42:
+                    36:3b:71:0e:41:07:a6:eb:7e:5c:1d:cd:58:5e:d3:
+                    c9:45:8e:ff:1e:a2:29:43:85:c6:48:60:a4:dd:6b:
+                    29:87:ec:5f:02:c6:f5:c4:f4:c5:65:08:5f:01:6a:
+                    bb:1e:3d:e3:7b:b8:28:46:44:41:7b:86:b9:a5:f4:
+                    a8:66:0a:84:9b:6a:a9:ec:35:d0:ea:c4:51:3b:d4:
+                    cd:41:52:f4:c6:6e:48:4d:c1:1c:95:92:fa:aa:13:
+                    96:36:03:0d:f3:6a:99:6f:dc:48:bc:db:28:15:a6:
+                    55:ab:80:0b:db:70:36:dc:d9:2d:7c:42:60:9b:8a:
+                    18:88:1b:76:3c:01:68:92:d0:6f:6b:a4:61:79:9a:
+                    cf:f9:10:fc:b5:99:11:fa:67:fa:9e:0b:c2:44:55:
+                    e5:eb:1a:c4:2f:cb:3e:0e:9a:f1:cc:36:91:87:5c:
+                    d9:5e:c3:40:57:82:9e:04:a8:f2:d5:7a:22:a5:40:
+                    f9:8f:ac:3f:85:ab:83:33:14:84:81:7a:24:96:3a:
+                    31:27
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            Netscape Comment: 
+                OpenSSL Generated Certificate
+            X509v3 Subject Key Identifier: 
+                CA:C3:FA:AA:E1:D1:3B:62:B3:12:C7:0D:7B:97:D5:05:3D:D3:02:92
+            X509v3 Authority Key Identifier: 
+                DirName:/C=IN/ST=Maharashtra/L=Pune/O=Josh Software Pvt. Ltd./OU=CSM/CN=csm.joshsoftware.com/emailAddress=admin@joshsoftware.com
+                serial:0F:3A:1D:9A:F3:4D:8A:03:16:08:EE:D5:6C:8D:2F:FF:B6:0B:98:62
+
+    Signature Algorithm: sha256WithRSAEncryption
+         eb:98:db:e1:9d:9b:ce:3f:7c:5b:d2:e8:3e:73:40:83:03:17:
+         85:cf:cf:f7:6f:9c:fe:6c:8e:19:48:6d:66:68:8c:e8:71:c4:
+         9f:ef:81:60:32:6f:2b:0f:52:78:50:29:51:95:93:a8:a4:bb:
+         af:4c:08:8a:7c:03:e4:ab:c6:31:ea:55:65:5e:5c:83:cd:63:
+         d4:35:60:84:77:44:1a:60:18:0f:8c:41:fd:49:5c:1d:e5:66:
+         81:4b:46:4e:fe:66:51:bb:88:60:15:93:22:d8:4c:9d:fe:30:
+         fb:a8:97:82:6a:ea:e3:8e:cc:15:fc:b4:6b:a4:e3:9c:3a:cb:
+         07:73:ce:69:e5:5e:69:bd:19:f0:a6:0b:54:3c:18:49:74:2c:
+         b4:99:75:ef:f6:d5:97:c0:ac:ee:b2:b3:7d:ab:3a:0d:2b:08:
+         c9:74:4e:6a:3b:f2:f5:68:42:e0:96:a4:96:69:38:fb:63:30:
+         64:69:4f:4a:bf:ea:25:0b:b5:53:46:c0:a4:92:d6:d1:9d:ed:
+         7b:e4:36:92:c2:ca:98:00:56:ee:80:71:25:5d:e2:47:7d:f9:
+         60:4e:f8:36:36:f3:35:0c:ae:4e:85:75:0a:5c:8d:c0:e7:3e:
+         e8:55:0b:9d:a6:b2:b2:86:c1:18:9e:be:c5:24:97:91:c6:f5:
+         e1:24:02:51
+-----BEGIN CERTIFICATE-----
+MIIE1TCCA72gAwIBAgIBEjANBgkqhkiG9w0BAQsFADCBqDELMAkGA1UEBhMCSU4x
+FDASBgNVBAgMC01haGFyYXNodHJhMQ0wCwYDVQQHDARQdW5lMSAwHgYDVQQKDBdK
+b3NoIFNvZnR3YXJlIFB2dC4gTHRkLjEMMAoGA1UECwwDQ1NNMR0wGwYDVQQDDBRj
+c20uam9zaHNvZnR3YXJlLmNvbTElMCMGCSqGSIb3DQEJARYWYWRtaW5Aam9zaHNv
+ZnR3YXJlLmNvbTAeFw0yMzA0MTgwOTM2MTBaFw0yNDA0MTcwOTM2MTBaMH4xCzAJ
+BgNVBAYTAklOMRQwEgYDVQQIDAtNYWhhcmFzaHRyYTEgMB4GA1UECgwXSm9zaCBT
+b2Z0d2FyZSBQdnQuIEx0ZC4xDDAKBgNVBAsMA1BPQzEMMAoGA1UEAwwDQ01TMRsw
+GQYJKoZIhvcNAQkBFgxhYmMxQHh5ei5jb20wggEiMA0GCSqGSIb3DQEBAQUAA4IB
+DwAwggEKAoIBAQC9ZjtdBVeum2uym/OsKsvIQhSMSCoUSpnnKY4sR85sAV+8dD6D
+4tcZpDKf/8uJT7hnCV7V4zdcYOjeQjY7cQ5BB6brflwdzVhe08lFjv8eoilDhcZI
+YKTdaymH7F8CxvXE9MVlCF8BarsePeN7uChGREF7hrml9KhmCoSbaqnsNdDqxFE7
+1M1BUvTGbkhNwRyVkvqqE5Y2Aw3zaplv3Ei82ygVplWrgAvbcDbc2S18QmCbihiI
+G3Y8AWiS0G9rpGF5ms/5EPy1mRH6Z/qeC8JEVeXrGsQvyz4OmvHMNpGHXNlew0BX
+gp4EqPLVeiKlQPmPrD+Fq4MzFISBeiSWOjEnAgMBAAGjggExMIIBLTAJBgNVHRME
+AjAAMCwGCWCGSAGG+EIBDQQfFh1PcGVuU1NMIEdlbmVyYXRlZCBDZXJ0aWZpY2F0
+ZTAdBgNVHQ4EFgQUysP6quHRO2KzEscNe5fVBT3TApIwgdIGA1UdIwSByjCBx6GB
+rqSBqzCBqDELMAkGA1UEBhMCSU4xFDASBgNVBAgMC01haGFyYXNodHJhMQ0wCwYD
+VQQHDARQdW5lMSAwHgYDVQQKDBdKb3NoIFNvZnR3YXJlIFB2dC4gTHRkLjEMMAoG
+A1UECwwDQ1NNMR0wGwYDVQQDDBRjc20uam9zaHNvZnR3YXJlLmNvbTElMCMGCSqG
+SIb3DQEJARYWYWRtaW5Aam9zaHNvZnR3YXJlLmNvbYIUDzodmvNNigMWCO7VbI0v
+/7YLmGIwDQYJKoZIhvcNAQELBQADggEBAOuY2+Gdm84/fFvS6D5zQIMDF4XPz/dv
+nP5sjhlIbWZojOhxxJ/vgWAybysPUnhQKVGVk6iku69MCIp8A+SrxjHqVWVeXIPN
+Y9Q1YIR3RBpgGA+MQf1JXB3lZoFLRk7+ZlG7iGAVkyLYTJ3+MPuol4Jq6uOOzBX8
+tGuk45w6ywdzzmnlXmm9GfCmC1Q8GEl0LLSZde/21ZfArO6ys32rOg0rCMl0Tmo7
+8vVoQuCWpJZpOPtjMGRpT0q/6iULtVNGwKSS1tGd7XvkNpLCypgAVu6AcSVd4kd9
++WBO+DY28zUMrk6FdQpcjcDnPuhVC52msrKGwRievsUkl5HG9eEkAlE=
+-----END CERTIFICATE-----

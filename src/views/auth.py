@@ -29,7 +29,6 @@ def signUpUser():
             "message": "User created successfully!"
         }), 201
     except Exception as e:
-        print(e)
         db.session.rollback();
         return jsonify({'message': f'An error occurred while creating the user: {str(e)}'}), 500
 
@@ -43,7 +42,6 @@ def signInUser():
             return jsonify({'message': 'Username and password are required'}), 400
         
         user = User.query.filter(User.username == username).first();
-        print(user)
         if user and check_password_hash(user.password, password):
             access_token = create_access_token(identity=user.id)
             return jsonify({'access_token':access_token, 'user': user}),200
@@ -51,6 +49,5 @@ def signInUser():
             return jsonify({'error':"Invalid credentials!"}), 401
     except Exception as e:
         db.session.rollback();
-        print(str(e))
         return jsonify({'error': f'An error occurred while signing in: {str(e)}'}), 500
 
