@@ -16,6 +16,14 @@ from src.app import db
 from src.models.ssl_certificate import SSLCertificate
 import pdb
 
+demoCADirectory = "demoCA/newcerts"
+
+def deleteDemoCAfiles():
+    for filename in os.listdir(demoCADirectory):
+        file_path = os.path.join(demoCADirectory, filename)
+        print(file_path)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
 
 @jwt_required()
 def home():
@@ -82,7 +90,7 @@ def sign_csr(csr):
 
     with open(cert_file, 'r') as f:
         client_cert = f.read()
-
+    deleteDemoCAfiles()
     return client_cert
 
 
@@ -135,6 +143,7 @@ def create_certificate(user_id):
             if cert_match:
                 cert_str = cert_match.group(0)
                 new_cert = SSLCertificate(certificate=cert_str, created_by=user_id)
+                # deleteDemoCAfiles()
                 db.session.add(new_cert)
                 db.session.commit()
                 return jsonify({
