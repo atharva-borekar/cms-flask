@@ -251,7 +251,7 @@ def download_certificate(user_id, certificate_id):
     try:
         certificate = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).filter(SSLCertificate.id == certificate_id).first()
         if certificate is None:
-            return jsonify({'message': 'Certificate not found'}), 200
+            return jsonify({'message': 'Certificate not found'}), 500
         else:
             subject_elements = certificate.subject.split(',')
             file_name_start = ''
@@ -260,21 +260,12 @@ def download_certificate(user_id, certificate_id):
                     file_name_start = ele_str.split('=')[1]
             
             file_name = f'{file_name_start}.pem'
-            # Create an SSL certificate file
-            with open(f'src/{file_name}', 'w') as f:
-                f.write(certificate.certificate)
-            # Create a response object
-            response = make_response(send_file(file_name, as_attachment=True))
-
-            # # Set the content type and file name
-            response.headers.set('Content-Type', 'application/x-pem-file')
-            response.headers.set('Content-Disposition', 'attachment', filename='certificate.pem')
-
-            # # Call the cleanup function after the response is sent
-            response.call_on_close(cleanup(file_name))
-
-            # return response
-            return response
+    
+            return jsonify({
+                "file": certificate.certificate,
+                "file_name": file_name
+            }), 200
     except Exception as e:
+        print(str(e))
         db.session.rollback();
-        return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
+        return jsonify({'message': 'Failed to download certificate'}), 500
