@@ -21,7 +21,6 @@ demoCADirectory = "demoCA/newcerts"
 def deleteDemoCAfiles():
     for filename in os.listdir(demoCADirectory):
         file_path = os.path.join(demoCADirectory, filename)
-        print(file_path)
         if os.path.isfile(file_path):
             os.remove(file_path)
 
@@ -55,8 +54,6 @@ def add_certificate(user_id):
 import os
 import subprocess
 
-@jwt_required()
-@cross_origin()
 def sign_csr(csr):
     ca_cert = open('src/rootCA.crt').read()  # Read the root CA certificate from file
     ca_key = open('src/rootCA.key').read()  # Read the root CA private key from file
@@ -238,17 +235,15 @@ def get_expired_certificates(user_id):
             return jsonify({'data': []}), 200
         else:
             expired_certificates = list(filter(expired_certificates_util, certificates))
-            print('expired_certificates',expired_certificates)
             return jsonify({'data': expired_certificates}), 200
         
     except Exception as e:
-        print(e)
         db.session.rollback();
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
 
 # Define a cleanup function to delete the certificate file
 def cleanup(filename):
-    os.remove(filename)
+    os.remove(f'src/{filename}')
 
 @jwt_required()
 @cross_origin()
@@ -262,13 +257,12 @@ def download_certificate(user_id, certificate_id):
             file_name_start = ''
             for ele_str in subject_elements:
                 if ele_str.startswith('CN'):
-                    resp = ele_str.split('=')[1]
+                    file_name_start = ele_str.split('=')[1]
             
             file_name = f'{file_name_start}.pem'
             # Create an SSL certificate file
-            with open(file_name, 'w') as f:
+            with open(f'src/{file_name}', 'w') as f:
                 f.write(certificate.certificate)
-            
             # Create a response object
             response = make_response(send_file(file_name, as_attachment=True))
 
@@ -277,7 +271,7 @@ def download_certificate(user_id, certificate_id):
             response.headers.set('Content-Disposition', 'attachment', filename='certificate.pem')
 
             # # Call the cleanup function after the response is sent
-            response.call_on_close(file_name)
+            response.call_on_close(cleanup(file_name))
 
             # return response
             return response
