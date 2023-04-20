@@ -93,9 +93,6 @@ def sign_csr(csr):
     deleteDemoCAfiles()
     return client_cert
 
-
-@jwt_required()
-@cross_origin()
 def generate_csr(country, state, locality, organization_name, organization_unit, common_name, email):
     # Build the OpenSSL command to generate the CSR
     openssl_command = [
@@ -110,7 +107,6 @@ def generate_csr(country, state, locality, organization_name, organization_unit,
     # Read the contents of the CSR file
     with open('csr.csr', 'r') as f:
         csr = f.read()
-
     # Return the CSR in the response
     return csr
 
@@ -127,7 +123,6 @@ def create_certificate(user_id):
         organization_unit = certificate["organization_unit"]
         organization_name = certificate["organization_name"]
         locality = certificate["locality"]
-        
         generated_csr = generate_csr(
             country=country,
             state=state,
@@ -266,6 +261,5 @@ def download_certificate(user_id, certificate_id):
                 "file_name": file_name
             }), 200
     except Exception as e:
-        print(str(e))
         db.session.rollback();
         return jsonify({'message': 'Failed to download certificate'}), 500
