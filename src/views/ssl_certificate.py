@@ -1,7 +1,7 @@
 import os
 import re
 import subprocess
-from flask import request, jsonify
+from flask import make_response, request, jsonify, send_file
 from flask_cors import cross_origin
 from werkzeug.security import check_password_hash,generate_password_hash
 from flask_jwt_extended import create_access_token, current_user, jwt_required, verify_jwt_in_request
@@ -35,6 +35,7 @@ def home():
         db.session.rollback();
         return jsonify({'message': f'An error occurred while accessing home: {str(e)}'}), 500
 
+@jwt_required()
 @cross_origin()
 def add_certificate(user_id):
     try:
@@ -54,6 +55,8 @@ def add_certificate(user_id):
 import os
 import subprocess
 
+@jwt_required()
+@cross_origin()
 def sign_csr(csr):
     ca_cert = open('src/rootCA.crt').read()  # Read the root CA certificate from file
     ca_key = open('src/rootCA.key').read()  # Read the root CA private key from file
@@ -94,7 +97,8 @@ def sign_csr(csr):
     return client_cert
 
 
-
+@jwt_required()
+@cross_origin()
 def generate_csr(country, state, locality, organization_name, organization_unit, common_name, email):
     # Build the OpenSSL command to generate the CSR
     openssl_command = [
@@ -113,6 +117,7 @@ def generate_csr(country, state, locality, organization_name, organization_unit,
     # Return the CSR in the response
     return csr
 
+@jwt_required()
 @cross_origin()
 def create_certificate(user_id):
     try:
@@ -143,7 +148,6 @@ def create_certificate(user_id):
             if cert_match:
                 cert_str = cert_match.group(0)
                 new_cert = SSLCertificate(certificate=cert_str, created_by=user_id)
-                # deleteDemoCAfiles()
                 db.session.add(new_cert)
                 db.session.commit()
                 return jsonify({
@@ -163,7 +167,6 @@ def create_certificate(user_id):
         db.session.rollback();
         return jsonify({'message': f'An error occurred while adding certificate: {str(e)}'}), 500
 
-
 @cross_origin()
 def get_certificate(user_id, certificate_id):
     try:
@@ -180,7 +183,8 @@ def get_certificate(user_id, certificate_id):
     except Exception as e:
         db.session.rollback();
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
-    
+
+@jwt_required()
 @cross_origin()
 def get_certificates(user_id):
     try:
@@ -202,6 +206,7 @@ def near_expiry_certificate_util(certificate):
     else:
         return False
 
+@jwt_required()
 @cross_origin()
 def get_near_expiry_certificates(user_id):
     try:
@@ -224,6 +229,7 @@ def expired_certificates_util(certificate):
     else:
         return False
 
+@jwt_required()
 @cross_origin()
 def get_expired_certificates(user_id):
     try:
@@ -232,7 +238,49 @@ def get_expired_certificates(user_id):
             return jsonify({'data': []}), 200
         else:
             expired_certificates = list(filter(expired_certificates_util, certificates))
+            print('expired_certificates',expired_certificates)
             return jsonify({'data': expired_certificates}), 200
+        
+    except Exception as e:
+        print(e)
+        db.session.rollback();
+        return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
+
+# Define a cleanup function to delete the certificate file
+def cleanup(filename):
+    os.remove(filename)
+
+@jwt_required()
+@cross_origin()
+def download_certificate(user_id, certificate_id):
+    try:
+        certificate = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).filter(SSLCertificate.id == certificate_id).first()
+        if certificate is None:
+            return jsonify({'message': 'Certificate not found'}), 200
+        else:
+            subject_elements = certificate.subject.split(',')
+            file_name_start = ''
+            for ele_str in subject_elements:
+                if ele_str.startswith('CN'):
+                    resp = ele_str.split('=')[1]
+            
+            file_name = f'{file_name_start}.pem'
+            # Create an SSL certificate file
+            with open(file_name, 'w') as f:
+                f.write(certificate.certificate)
+            
+            # Create a response object
+            response = make_response(send_file(file_name, as_attachment=True))
+
+            # # Set the content type and file name
+            response.headers.set('Content-Type', 'application/x-pem-file')
+            response.headers.set('Content-Disposition', 'attachment', filename='certificate.pem')
+
+            # # Call the cleanup function after the response is sent
+            response.call_on_close(file_name)
+
+            # return response
+            return response
     except Exception as e:
         db.session.rollback();
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
