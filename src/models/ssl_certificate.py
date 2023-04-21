@@ -17,6 +17,7 @@ class SSLCertificate(db.Model):
     signature_hash_algorithm: str
     subject: str
     version: str
+    name: str
     
     id = db.Column(db.Integer, primary_key=True)
     certificate = db.Column(db.String(10000))
@@ -29,6 +30,7 @@ class SSLCertificate(db.Model):
     signature_hash_algorithm = db.Column(db.String(256))
     subject = db.Column(db.String(10000))
     version = db.Column(db.String(256))
+    name = db.Column(db.String(128))
 
     def __init__(self, certificate, created_by):
         self.certificate = certificate

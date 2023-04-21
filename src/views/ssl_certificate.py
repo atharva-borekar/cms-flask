@@ -1,8 +1,9 @@
 import os
 import re
 import subprocess
-from flask import make_response, request, jsonify, send_file
+from flask import Request, make_response, request, jsonify, send_file, url_for
 from flask_cors import cross_origin
+import requests
 from werkzeug.security import check_password_hash,generate_password_hash
 from flask_jwt_extended import create_access_token, current_user, jwt_required, verify_jwt_in_request
 from cryptography import x509
@@ -263,3 +264,63 @@ def download_certificate(user_id, certificate_id):
     except Exception as e:
         db.session.rollback();
         return jsonify({'message': 'Failed to download certificate'}), 500
+
+@jwt_required()
+@cross_origin()
+def renew_certificate(user_id,certificate_id):
+    try:
+        certificate = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).filter(SSLCertificate.id == certificate_id).first()
+        if not certificate:
+            return jsonify({
+                "error": f"Certificate with ID {certificate_id} not found."
+            }), 404
+        
+        indexFile = open("demoCA/index.txt", "w")
+        oldIndexFile = open("demoCA/index.txt.old","w")
+        indexFile.close()
+        oldIndexFile.close()
+        loadedCertificate = x509.load_pem_x509_certificate(certificate.certificate.encode(), default_backend())
+        country = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME)[0].value
+        state = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME)[0].value
+        email = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value
+        common_name = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
+        organization_unit = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value
+        organization_name = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME)[0].value
+        # locality = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME)[0].value
+        
+        generated_csr = generate_csr(
+            country=country,
+            state=state,
+            locality='',
+            organization_name=organization_name,
+            organization_unit=organization_unit,
+            common_name=common_name,
+            email=email
+        )
+        certificate_string = sign_csr(generated_csr)
+        
+        if certificate_string:
+            cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
+            if cert_match:
+                cert_str = cert_match.group(0)
+                db.session.delete(certificate)
+                renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id)
+                db.session.add(renewed_cert)
+                db.session.commit()
+                return jsonify({
+                    "message": "Certificate renewed successfully!",
+                    "certificate": certificate.id
+                }), 200
+            else:
+                return jsonify({
+                    "error": "There was a problem in signing certificate!"
+                })
+        else:
+            return jsonify({
+                "error": "There was a problem signing csr!"
+            }), 500
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "error": f"An error occurred while renewing certificate: {str(e)}"
+        }), 500

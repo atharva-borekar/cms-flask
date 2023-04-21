@@ -39,7 +39,8 @@ def app_factory():
         get_expired_certificates, 
         get_near_expiry_certificates,
         create_certificate,
-        download_certificate
+        download_certificate,
+        renew_certificate
     )
     app.add_url_rule('/home', view_func=home, methods=['GET'])
     app.add_url_rule('/users/signup', view_func=signUpUser, methods=['POST'])
@@ -51,4 +52,5 @@ def app_factory():
     app.add_url_rule('/users/<int:user_id>/get_expired_certificates', view_func=get_expired_certificates, methods=['GET'])
     app.add_url_rule('/users/<int:user_id>/get_near_expiry_certificates', view_func=get_near_expiry_certificates, methods=['GET'])
     app.add_url_rule('/users/<int:user_id>/download_certificate/<int:certificate_id>', view_func=download_certificate, methods=['GET'])
+    app.add_url_rule('/users/<int:user_id>/renew_certificate/<int:certificate_id>', view_func=renew_certificate, methods=['POST'])
     return app
