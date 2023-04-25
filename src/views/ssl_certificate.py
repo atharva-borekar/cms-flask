@@ -1,15 +1,12 @@
 import os
 import re
 import subprocess
-from flask import Request, make_response, request, jsonify, send_file, url_for
+from flask import request, jsonify
 from flask_cors import cross_origin
-import requests
-from werkzeug.security import check_password_hash,generate_password_hash
-from flask_jwt_extended import create_access_token, current_user, jwt_required, verify_jwt_in_request
+from flask_jwt_extended import current_user, jwt_required
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization, hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.fernet import Fernet
 from datetime import datetime
 
 from src.app import db
@@ -18,6 +15,7 @@ from src.models.ssl_certificate import SSLCertificate
 import pdb
 
 demoCADirectory = "demoCA/newcerts"
+encryption_key = Fernet.generate_key()
 
 def getSubjectAttributeValue(arr):
     if arr is not None:
@@ -100,6 +98,12 @@ def sign_csr_util(csr):
     with open(cert_file, 'r') as f:
         client_cert = f.read()
     deleteDemoCAfiles()
+    
+    os.remove("client.crt")
+    os.remove("ca.crt")
+    os.remove("ca.key")
+    os.remove("client.csr")
+    os.remove("csr.csr")
     return client_cert
 
 @jwt_required()
@@ -107,33 +111,21 @@ def sign_csr_util(csr):
 def sign_csr():
     try:
         certificate = request.json["certificate"]
-        # loaded_certificate = x509.load_pem_x509_certificate(certificate.encode(), default_backend())
-        # subject = loaded_certificate.subject
-        # country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
-        # state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
-        # email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
-        # common_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
-        # organization_unit = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
-        # organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
-        # locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
-        
-        # generated_csr = generate_csr_util(
-        #     country=country,
-        #     state=state,
-        #     locality=locality,
-        #     organization_name=organization_name,
-        #     organization_unit=organization_unit,
-        #     common_name=common_name,
-        #     email=email
-        # )
         
         signed_certificate = sign_csr_util(certificate)
         
         if signed_certificate:
-                return jsonify({
-                    "message": "CSR signed successfully!",
-                    "csr": signed_certificate
-                }), 201
+            cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", signed_certificate, re.DOTALL)
+            if cert_match:
+                cert_str = cert_match.group(0)
+                new_cert = SSLCertificate(certificate=cert_str, created_by=current_user.id)
+                db.session.add(new_cert)
+                db.session.commit()
+        
+            return jsonify({
+                "message": "CSR signed successfully!",
+                "csr": signed_certificate
+            }), 201
         else:
             return jsonify({
                 "error":"There was a problem in signing CSR!"
@@ -157,6 +149,16 @@ def generate_csr_util(country, state, locality, organization_name, organization_
     # Run the OpenSSL command to generate the CSR
     subprocess.run(openssl_command)
 
+    with open('csr.key', 'rb') as f:
+        encrypted_csr_key = f.read()
+
+    # Encrypt the file content
+    f = Fernet(encryption_key)
+    encrypted_file_content = f.encrypt(encrypted_csr_key)
+
+    # Save the encrypted file to disk
+    with open(f'keys/{common_name}_{email}.enc', 'wb') as f:
+        f.write(encrypted_file_content)
     # Read the contents of the CSR file
     with open('csr.csr', 'r') as f:
         csr = f.read()
