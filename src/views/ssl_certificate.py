@@ -19,6 +19,13 @@ import pdb
 
 demoCADirectory = "demoCA/newcerts"
 
+def getSubjectAttributeValue(arr):
+    if arr is not None:
+        if len(arr) > 0 and arr[0] is not None and arr[0].value is not None:
+            return arr[0].value
+    else:
+        return ""
+
 def deleteDemoCAfiles():
     for filename in os.listdir(demoCADirectory):
         file_path = os.path.join(demoCADirectory, filename)
@@ -41,6 +48,7 @@ def add_certificate(user_id):
     try:
         certificate = request.json["certificate"]
         new_cert = SSLCertificate(certificate=certificate, created_by=user_id)
+        # pdb.set_trace()
         db.session.add(new_cert)
         db.session.commit()
         return jsonify({
@@ -55,7 +63,7 @@ def add_certificate(user_id):
 import os
 import subprocess
 
-def sign_csr(csr):
+def sign_csr_util(csr):
     ca_cert = open('src/rootCA.crt').read()  # Read the root CA certificate from file
     ca_key = open('src/rootCA.key').read()  # Read the root CA private key from file
     ca_password = ''  # Replace with your CA password
@@ -94,7 +102,51 @@ def sign_csr(csr):
     deleteDemoCAfiles()
     return client_cert
 
-def generate_csr(country, state, locality, organization_name, organization_unit, common_name, email):
+@jwt_required()
+@cross_origin()
+def sign_csr():
+    try:
+        certificate = request.json["certificate"]
+        # loaded_certificate = x509.load_pem_x509_certificate(certificate.encode(), default_backend())
+        # subject = loaded_certificate.subject
+        # country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
+        # state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
+        # email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
+        # common_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
+        # organization_unit = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
+        # organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
+        # locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
+        
+        # generated_csr = generate_csr_util(
+        #     country=country,
+        #     state=state,
+        #     locality=locality,
+        #     organization_name=organization_name,
+        #     organization_unit=organization_unit,
+        #     common_name=common_name,
+        #     email=email
+        # )
+        
+        signed_certificate = sign_csr_util(certificate)
+        
+        if signed_certificate:
+                return jsonify({
+                    "message": "CSR signed successfully!",
+                    "csr": signed_certificate
+                }), 201
+        else:
+            return jsonify({
+                "error":"There was a problem in signing CSR!"
+            }), 500
+
+    except Exception as e:
+        db.session.rollback();
+        return jsonify({'message': f'An error occurred while signing CSR: {str(e)}'}), 500
+
+
+
+def generate_csr_util(country, state, locality, organization_name, organization_unit, common_name, email):
+    print('locality', locality)
     # Build the OpenSSL command to generate the CSR
     openssl_command = [
         'openssl', 'req', '-new', '-nodes', '-newkey', 'rsa:2048', '-keyout', 'csr.key',
@@ -113,6 +165,43 @@ def generate_csr(country, state, locality, organization_name, organization_unit,
 
 @jwt_required()
 @cross_origin()
+def generate_csr():
+    try:
+        certificate = request.json["certificate"]
+        name = certificate['name']
+        country = certificate['country']
+        state = certificate["state"]
+        email = certificate["email"]
+        common_name = certificate["common_name"]
+        organization_unit = certificate["organization_unit"]
+        organization_name = certificate["organization_name"]
+        locality = certificate["locality"]
+        generated_csr = generate_csr_util(
+            country=country,
+            state=state,
+            locality=locality,
+            organization_name=organization_name,
+            organization_unit=organization_unit,
+            common_name=common_name,
+            email=email
+        )
+        
+        if generated_csr:
+                return jsonify({
+                    "message": "Certificate created successfully!",
+                    "csr": generated_csr
+                }), 201
+        else:
+            return jsonify({
+                "error":"There was a problem in generating CSR!"
+            }), 500
+
+    except Exception as e:
+        db.session.rollback();
+        return jsonify({'message': f'An error occurred while generating CSR: {str(e)}'}), 500
+
+@jwt_required()
+@cross_origin()
 def create_certificate(user_id):
     try:
         certificate = request.json["certificate"]
@@ -124,7 +213,7 @@ def create_certificate(user_id):
         organization_unit = certificate["organization_unit"]
         organization_name = certificate["organization_name"]
         locality = certificate["locality"]
-        generated_csr = generate_csr(
+        generated_csr = generate_csr_util(
             country=country,
             state=state,
             locality=locality,
@@ -134,7 +223,7 @@ def create_certificate(user_id):
             email=email
         )
         
-        certificate_string = sign_csr(generated_csr)
+        certificate_string = sign_csr_util(generated_csr)
         
         if certificate_string:
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
@@ -288,7 +377,7 @@ def renew_certificate(user_id,certificate_id):
         organization_name = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME)[0].value
         # locality = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME)[0].value
         
-        generated_csr = generate_csr(
+        generated_csr = generate_csr_util(
             country=country,
             state=state,
             locality='',
@@ -297,7 +386,7 @@ def renew_certificate(user_id,certificate_id):
             common_name=common_name,
             email=email
         )
-        certificate_string = sign_csr(generated_csr)
+        certificate_string = sign_csr_util(generated_csr)
         
         if certificate_string:
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
