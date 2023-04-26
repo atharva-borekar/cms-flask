@@ -16,6 +16,8 @@ from src.app import db
 from src.models.ssl_certificate import SSLCertificate
 from src.constants import demoCADirectory, encryption_key
 
+def getDecodedCurrentUserPasscode():
+    return base64.urlsafe_b64decode(current_user.passcode)
 def getSubjectAttributeValue(arr):
     if arr is not None:
         if len(arr) > 0 and arr[0] is not None and arr[0].value is not None:
@@ -40,15 +42,16 @@ def readFileContent(file_path):
 def getEncryptedPrivateKeyFromFile(key_path):
     with open(key_path, "rb") as f:
         key_content = f.read()
-    fernet = Fernet(current_user.passcode)
+
+    fernet = Fernet(getDecodedCurrentUserPasscode())
     return fernet.encrypt(key_content)
 
 def encryptPrivateKey(private_key):
-    fernet = Fernet(current_user.passcode)
+    fernet = Fernet(getDecodedCurrentUserPasscode())
     return fernet.encrypt(private_key)
 
 def decryptPrivateKey(encrypted_key):
-    fernet = Fernet(current_user.passcode)
+    fernet = Fernet(getDecodedCurrentUserPasscode())
     return fernet.decrypt(encrypted_key)
     
 
