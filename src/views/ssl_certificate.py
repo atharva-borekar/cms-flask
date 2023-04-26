@@ -1,4 +1,5 @@
 import os
+import pdb
 import re
 import subprocess
 from flask import request, jsonify
@@ -12,10 +13,8 @@ from datetime import datetime
 from src.app import db
 
 from src.models.ssl_certificate import SSLCertificate
-import pdb
-
-demoCADirectory = "demoCA/newcerts"
-encryption_key = Fernet.generate_key()
+from src.constants import demoCADirectory, encryption_key
+fernet = Fernet(encryption_key)
 
 def getSubjectAttributeValue(arr):
     if arr is not None:
@@ -29,6 +28,26 @@ def deleteDemoCAfiles():
         file_path = os.path.join(demoCADirectory, filename)
         if os.path.isfile(file_path):
             os.remove(file_path)
+            
+def writeFileContent(file_path:str, content):
+    with open(file_path,"w") as f:
+        f.write(content)
+
+def readFileContent(file_path):
+    with open(file_path, "r") as f:
+        return f.read()
+
+def getEncryptedPrivateKeyFromFile(key_path):
+    with open(key_path, "rb") as f:
+        key_content = f.read()
+    return fernet.encrypt(key_content)
+
+def encryptPrivateKey(private_key):
+    return fernet.encrypt(private_key)
+
+def decryptPrivateKey(encrypted_key):
+    return fernet.decrypt(encrypted_key)
+    
 
 @jwt_required()
 def home():
@@ -46,7 +65,6 @@ def add_certificate(user_id):
     try:
         certificate = request.json["certificate"]
         new_cert = SSLCertificate(certificate=certificate, created_by=user_id)
-        # pdb.set_trace()
         db.session.add(new_cert)
         db.session.commit()
         return jsonify({
@@ -66,17 +84,15 @@ def sign_csr_util(csr):
     ca_key = open('src/rootCA.key').read()  # Read the root CA private key from file
     ca_password = ''  # Replace with your CA password
 
+
+    writeFileContent('client.csr', csr)
     # Write the CSR to a file
-    with open('client.csr', 'w') as f:
-        f.write(csr)
 
+    writeFileContent('ca.crt', ca_cert)
     # Write the CA certificate to a file
-    with open('ca.crt', 'w') as f:
-        f.write(ca_cert)
 
+    writeFileContent('ca.key', ca_key)
     # Write the CA private key to a file
-    with open('ca.key', 'w') as f:
-        f.write(ca_key)
 
     # Build the OpenSSL command to sign the CSR
     openssl_command = [
@@ -95,8 +111,8 @@ def sign_csr_util(csr):
     if not os.path.exists(cert_file):
         return None
 
-    with open(cert_file, 'r') as f:
-        client_cert = f.read()
+    client_cert = readFileContent(cert_file)
+    
     deleteDemoCAfiles()
     
     os.remove("client.crt")
@@ -138,7 +154,6 @@ def sign_csr():
 
 
 def generate_csr_util(country, state, locality, organization_name, organization_unit, common_name, email):
-    print('locality', locality)
     # Build the OpenSSL command to generate the CSR
     openssl_command = [
         'openssl', 'req', '-new', '-nodes', '-newkey', 'rsa:2048', '-keyout', 'csr.key',
@@ -149,21 +164,18 @@ def generate_csr_util(country, state, locality, organization_name, organization_
     # Run the OpenSSL command to generate the CSR
     subprocess.run(openssl_command)
 
-    with open('csr.key', 'rb') as f:
-        encrypted_csr_key = f.read()
-
-    # Encrypt the file content
-    f = Fernet(encryption_key)
-    encrypted_file_content = f.encrypt(encrypted_csr_key)
+    encrypted_private_key = getEncryptedPrivateKeyFromFile('csr.key')
 
     # Save the encrypted file to disk
-    with open(f'keys/{common_name}_{email}.enc', 'wb') as f:
-        f.write(encrypted_file_content)
+    # with open(f'keys/{common_name}_{email}.enc', 'wb') as f:
+    #     f.write(encrypted_private_key)
+        
     # Read the contents of the CSR file
     with open('csr.csr', 'r') as f:
         csr = f.read()
+        
     # Return the CSR in the response
-    return csr
+    return csr, encrypted_private_key
 
 @jwt_required()
 @cross_origin()
@@ -178,7 +190,7 @@ def generate_csr():
         organization_unit = certificate["organization_unit"]
         organization_name = certificate["organization_name"]
         locality = certificate["locality"]
-        generated_csr = generate_csr_util(
+        generated_csr, encrypted_private_key = generate_csr_util(
             country=country,
             state=state,
             locality=locality,
@@ -189,8 +201,11 @@ def generate_csr():
         )
         
         if generated_csr:
+                csr = SSLCertificate(certificate=generated_csr, created_by=current_user.id, is_csr=True)
+                db.session.add(csr)
+                db.session.commit()
                 return jsonify({
-                    "message": "Certificate created successfully!",
+                    "message": "CSR created successfully!",
                     "csr": generated_csr
                 }), 201
         else:
@@ -215,7 +230,7 @@ def create_certificate(user_id):
         organization_unit = certificate["organization_unit"]
         organization_name = certificate["organization_name"]
         locality = certificate["locality"]
-        generated_csr = generate_csr_util(
+        generated_csr, encrypted_private_key = generate_csr_util(
             country=country,
             state=state,
             locality=locality,
@@ -231,7 +246,7 @@ def create_certificate(user_id):
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
             if cert_match:
                 cert_str = cert_match.group(0)
-                new_cert = SSLCertificate(certificate=cert_str, created_by=user_id)
+                new_cert = SSLCertificate(certificate=cert_str, created_by=user_id, encrypted_private_key=encrypted_private_key)
                 db.session.add(new_cert)
                 db.session.commit()
                 return jsonify({
@@ -294,7 +309,7 @@ def near_expiry_certificate_util(certificate):
 @cross_origin()
 def get_near_expiry_certificates(user_id):
     try:
-        certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).all()
+        certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id, SSLCertificate.certificate_type != 'csr').all()
         if certificates is None:
             return 'No certificates created.', 404
         else:
@@ -317,7 +332,7 @@ def expired_certificates_util(certificate):
 @cross_origin()
 def get_expired_certificates(user_id):
     try:
-        certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).all()
+        certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id, SSLCertificate.certificate_type != 'csr').all()
         if certificates is None:
             return jsonify({'data': []}), 200
         else:
@@ -371,18 +386,19 @@ def renew_certificate(user_id,certificate_id):
         indexFile.close()
         oldIndexFile.close()
         loadedCertificate = x509.load_pem_x509_certificate(certificate.certificate.encode(), default_backend())
-        country = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME)[0].value
-        state = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME)[0].value
-        email = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS)[0].value
-        common_name = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
-        organization_unit = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME)[0].value
-        organization_name = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME)[0].value
-        # locality = loadedCertificate.subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME)[0].value
+        subject = loadedCertificate.subject
+        country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
+        state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
+        email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
+        common_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
+        organization_unit = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
+        organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
+        locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
         
-        generated_csr = generate_csr_util(
+        generated_csr, encrypted_private_key = generate_csr_util(
             country=country,
             state=state,
-            locality='',
+            locality=locality,
             organization_name=organization_name,
             organization_unit=organization_unit,
             common_name=common_name,
@@ -395,7 +411,7 @@ def renew_certificate(user_id,certificate_id):
             if cert_match:
                 cert_str = cert_match.group(0)
                 db.session.delete(certificate)
-                renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id)
+                renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id, encrypted_private_key=encrypted_private_key)
                 db.session.add(renewed_cert)
                 db.session.commit()
                 return jsonify({

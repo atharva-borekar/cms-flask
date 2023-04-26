@@ -39,8 +39,14 @@ class SSLCertificate(db.Model):
     issuer_common_name: str
     issuer_organization_unit: str
     issuer_organization_name: str
+    private_key: str
+    certificate_type: str
     
     id = db.Column(db.Integer, primary_key=True)
+    
+    private_key = db.Column(db.String(10000))
+    certificate_type = db.Column(db.String(32))
+    
     certificate = db.Column(db.String(10000))
     created_by = db.Column(db.Integer)
     not_valid_after = db.Column(db.String(64))
@@ -70,11 +76,18 @@ class SSLCertificate(db.Model):
     issuer_organization_unit = db.Column(db.String(128))
     issuer_organization_name = db.Column(db.String(128))
 
-    def __init__(self, certificate, created_by):
+    def __init__(self, certificate, created_by, is_csr = False, encrypted_private_key = ""):
+
         self.certificate = certificate
-        certificate = x509.load_pem_x509_certificate(certificate.encode(), default_backend())
+        self.created_by = created_by
+        self.certificate_type = "csr" if is_csr else "certificate"
+        
+        certificate = x509.load_pem_x509_csr(certificate.encode('utf-8'), default_backend()) if is_csr else x509.load_pem_x509_certificate(certificate.encode(), default_backend())
         subject = certificate.subject
-        issuer = certificate.issuer
+        
+        self.private_key = encrypted_private_key
+        
+        
         self.country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
         self.state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
         self.email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
@@ -83,22 +96,26 @@ class SSLCertificate(db.Model):
         self.organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
         self.locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
         
-        self.issuer_country = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
-        self.issuer_state = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
-        self.issuer_email = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
-        self.issuer_common_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
-        self.issuer_organization_unit = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
-        self.issuer_organization_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
-        self.issuer_locality = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
+        if not is_csr:
+            issuer = certificate.issuer
+            self.issuer_country = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
+            self.issuer_state = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
+            self.issuer_email = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
+            self.issuer_common_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
+            self.issuer_organization_unit = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
+            self.issuer_organization_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
+            self.issuer_locality = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
         
-        self.created_by = created_by
-        self.not_valid_after = certificate.not_valid_after.isoformat()
-        self.not_valid_before = certificate.not_valid_before.isoformat()
-        self.issuer = certificate.issuer.rfc4514_string()
-        self.serial_number = certificate.serial_number
-        self.signature = certificate.signature
+            self.not_valid_after = certificate.not_valid_after.isoformat()
+            self.not_valid_before = certificate.not_valid_before.isoformat()
+            self.issuer = certificate.issuer.rfc4514_string()
+            
+            self.version = certificate.version.name
+            self.serial_number = certificate.serial_number
+            self.signature = certificate.signature
+            
         self.signature_hash_algorithm = certificate.signature_hash_algorithm.name
         self.subject = certificate.subject.rfc4514_string()
-        self.version = certificate.version.name
+        
         
         
