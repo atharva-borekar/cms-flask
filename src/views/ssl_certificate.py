@@ -1,3 +1,4 @@
+import base64
 import os
 import pdb
 import re
@@ -14,7 +15,6 @@ from src.app import db
 
 from src.models.ssl_certificate import SSLCertificate
 from src.constants import demoCADirectory, encryption_key
-fernet = Fernet(encryption_key)
 
 def getSubjectAttributeValue(arr):
     if arr is not None:
@@ -40,12 +40,15 @@ def readFileContent(file_path):
 def getEncryptedPrivateKeyFromFile(key_path):
     with open(key_path, "rb") as f:
         key_content = f.read()
+    fernet = Fernet(current_user.passcode)
     return fernet.encrypt(key_content)
 
 def encryptPrivateKey(private_key):
+    fernet = Fernet(current_user.passcode)
     return fernet.encrypt(private_key)
 
 def decryptPrivateKey(encrypted_key):
+    fernet = Fernet(current_user.passcode)
     return fernet.decrypt(encrypted_key)
     
 
@@ -165,10 +168,6 @@ def generate_csr_util(country, state, locality, organization_name, organization_
     subprocess.run(openssl_command)
 
     encrypted_private_key = getEncryptedPrivateKeyFromFile('csr.key')
-
-    # Save the encrypted file to disk
-    # with open(f'keys/{common_name}_{email}.enc', 'wb') as f:
-    #     f.write(encrypted_private_key)
         
     # Read the contents of the CSR file
     with open('csr.csr', 'r') as f:
@@ -287,6 +286,12 @@ def get_certificate(user_id, certificate_id):
 @cross_origin()
 def get_certificates(user_id):
     try:
+        # f = Fernet(base64.urlsafe_b64decode(current_user.passcode.encode('utf-8')))
+        # text = "Hello World"
+        # encrypted = f.encrypt(text.encode())
+        # print("text",text)
+        # print("encrypted", encrypted)
+        # print("decrypted", f.decrypt(encrypted).decode())
         certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).all()
         if certificates is None:
             return 'No certificates created.', 404
