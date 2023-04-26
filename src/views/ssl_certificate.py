@@ -18,6 +18,7 @@ from src.constants import demoCADirectory, encryption_key
 
 def getDecodedCurrentUserPasscode():
     return base64.urlsafe_b64decode(current_user.passcode)
+
 def getSubjectAttributeValue(arr):
     if arr is not None:
         if len(arr) > 0 and arr[0] is not None and arr[0].value is not None:
@@ -42,13 +43,13 @@ def readFileContent(file_path):
 def getEncryptedPrivateKeyFromFile(key_path):
     with open(key_path, "rb") as f:
         key_content = f.read()
-
     fernet = Fernet(getDecodedCurrentUserPasscode())
-    return fernet.encrypt(key_content)
+    
+    return fernet.encrypt(key_content).decode('utf-8')
 
 def encryptPrivateKey(private_key):
     fernet = Fernet(getDecodedCurrentUserPasscode())
-    return fernet.encrypt(private_key)
+    return fernet.encrypt(private_key).decode('utf-8')
 
 def decryptPrivateKey(encrypted_key):
     fernet = Fernet(getDecodedCurrentUserPasscode())
@@ -285,21 +286,25 @@ def get_certificate(user_id, certificate_id):
         db.session.rollback();
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
 
+class PrivateKey:
+    def __init__(self, private_key):
+        self.private_key = private_key
+
 @jwt_required()
 @cross_origin()
 def get_certificates(user_id):
     try:
-        # f = Fernet(base64.urlsafe_b64decode(current_user.passcode.encode('utf-8')))
-        # text = "Hello World"
-        # encrypted = f.encrypt(text.encode())
-        # print("text",text)
-        # print("encrypted", encrypted)
-        # print("decrypted", f.decrypt(encrypted).decode())
         certificates = SSLCertificate.query.filter(SSLCertificate.created_by == user_id).all()
         if certificates is None:
             return 'No certificates created.', 404
         else:
-            return jsonify({'data': certificates}), 200
+            cert = certificates[0]
+            obj = PrivateKey(private_key=cert.private_key)
+            print("obj",obj)
+            f = Fernet(getDecodedCurrentUserPasscode())
+            private_key = f.decrypt(obj.private_key)
+            print("private_key",private_key)
+            return jsonify({'data': certificates }), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
