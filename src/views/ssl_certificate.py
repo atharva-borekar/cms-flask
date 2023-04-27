@@ -71,7 +71,9 @@ def home():
 def add_certificate(user_id):
     try:
         certificate = request.json["certificate"]
-        new_cert = SSLCertificate(certificate=certificate, created_by=user_id)
+        private_key = request.json["private_key"]
+        encrypted_private_key = encryptPrivateKey(private_key)
+        new_cert = SSLCertificate(certificate=certificate, created_by=user_id, encrypted_private_key=encrypted_private_key)
         db.session.add(new_cert)
         db.session.commit()
         return jsonify({
@@ -169,7 +171,7 @@ def generate_csr_util(country, state, locality, organization_name, organization_
     ]
 
     # Run the OpenSSL command to generate the CSR
-    subprocess.run(openssl_command)
+    p = subprocess.run(openssl_command, stderr=subprocess.PIPE)
 
     encrypted_private_key = getEncryptedPrivateKeyFromFile('csr.key')
         
@@ -298,13 +300,21 @@ def get_certificates(user_id):
         if certificates is None:
             return 'No certificates created.', 404
         else:
-            cert = certificates[0]
-            obj = PrivateKey(private_key=cert.private_key)
-            print("obj",obj)
-            f = Fernet(getDecodedCurrentUserPasscode())
-            private_key = f.decrypt(obj.private_key)
-            print("private_key",private_key)
-            return jsonify({'data': certificates }), 200
+            total_certificates = 0
+            total_csr = 0
+            for cert in certificates:
+                if cert.certificate_type == "csr":
+                    total_csr += 1
+                if cert.certificate_type == "certificate":
+                    total_certificates += 1
+                
+            # cert = certificates[0]
+            # obj = PrivateKey(private_key=cert.private_key)
+            # print("obj",obj)
+            # f = Fernet(getDecodedCurrentUserPasscode())
+            # private_key = f.decrypt(obj.private_key)
+            # print("private_key",private_key)
+            return jsonify({'data': certificates, "length": len(certificates), "length_certificates":total_certificates, "length_csr":total_csr }), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
@@ -327,7 +337,7 @@ def get_near_expiry_certificates(user_id):
             return 'No certificates created.', 404
         else:
             near_expiry_certificates = list(filter(near_expiry_certificate_util, certificates))
-            return jsonify({'data': near_expiry_certificates}), 200
+            return jsonify({'data': near_expiry_certificates, "length":len(certificates)}), 200
     except Exception as e:
         db.session.rollback();
         return jsonify({'message': f'An error occurred while extracting certificate: {str(e)}'}), 500
@@ -350,7 +360,7 @@ def get_expired_certificates(user_id):
             return jsonify({'data': []}), 200
         else:
             expired_certificates = list(filter(expired_certificates_util, certificates))
-            return jsonify({'data': expired_certificates}), 200
+            return jsonify({'data': expired_certificates, "length":len(certificates)}), 200
         
     except Exception as e:
         db.session.rollback();
@@ -444,3 +454,32 @@ def renew_certificate(user_id,certificate_id):
         return jsonify({
             "error": f"An error occurred while renewing certificate: {str(e)}"
         }), 500
+        
+
+@jwt_required()
+@cross_origin()
+def download_private_key(user_id, certificate_id):
+    try:
+        pdb.set_trace()
+        password = request.json['password']
+        from werkzeug.security import check_password_hash
+        if check_password_hash(current_user.password, password=password):
+            certificate = SSLCertificate.query.filter(SSLCertificate.created_by == user_id, SSLCertificate.id == certificate_id).first()
+            if certificate is None:
+                return jsonify({'message': 'Private key not found'}), 500
+            else:
+                file_name = f'{certificate.common_name}.pem'
+                f = Fernet(getDecodedCurrentUserPasscode())
+                obj = PrivateKey(private_key=certificate.private_key)
+                private_key = f.decrypt(obj.private_key).decode()
+                return jsonify({
+                    "file": private_key,
+                    "file_name": file_name
+                }), 200
+        else:
+            return jsonify({
+                "error": "Incorrect credentials!"
+            }), 500
+    except Exception as e:
+        db.session.rollback();
+        return jsonify({'message': 'Failed to download certificate'}), 500

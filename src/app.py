@@ -42,7 +42,8 @@ def app_factory():
         download_certificate,
         renew_certificate,
         generate_csr,
-        sign_csr
+        sign_csr,
+        download_private_key
     )
     app.add_url_rule('/home', view_func=home, methods=['GET'])
     app.add_url_rule('/users/signup', view_func=signUpUser, methods=['POST'])
@@ -57,4 +58,5 @@ def app_factory():
     app.add_url_rule('/users/<int:user_id>/renew_certificate/<int:certificate_id>', view_func=renew_certificate, methods=['POST'])
     app.add_url_rule('/generate_csr', view_func=generate_csr, methods=['POST'])
     app.add_url_rule('/sign_csr', view_func=sign_csr, methods=['POST'])
+    app.add_url_rule('/users/<int:user_id>/download_private_key/<int:certificate_id>', view_func=download_private_key, methods=['GET'])
     return app
