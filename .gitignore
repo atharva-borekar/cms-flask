@@ -1,7 +1,24 @@
-certificates
-demoCA
-keys
+# Ignore compiled Python files
+*.pyc
 
-src/migrations
+# Ignore the demoCA directory and its contents
+demoCA/
 
-demoCA/index.txt
+# Ignore the keys directory and its contents
+keys/
+
+# Ignore the migrations directory and its contents
+src/migrations/
+
+# Ignore the __pycache__ directories and their contents
+__pycache__/
+
+# Ignore the virtual environment directory
+venv/
+
+# ignore certificate files
+*.crt
+*.jks
+
+# ignore csr.key
+csr.key
