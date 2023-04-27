@@ -460,7 +460,6 @@ def renew_certificate(user_id,certificate_id):
 @cross_origin()
 def download_private_key(user_id, certificate_id):
     try:
-        pdb.set_trace()
         password = request.json['password']
         from werkzeug.security import check_password_hash
         if check_password_hash(current_user.password, password=password):
