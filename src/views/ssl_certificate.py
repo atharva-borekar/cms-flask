@@ -1,5 +1,6 @@
 import base64
 import os
+import pdb
 import re
 import subprocess
 from flask import request, jsonify
@@ -70,7 +71,8 @@ def home():
 def add_certificate(user_id):
     try:
         certificate = request.json["certificate"]
-        if request.json["private_key"] is not None:
+        encrypted_private_key = ""
+        if request.json.get("private_key") is not None:
             encrypted_private_key = encryptPrivateKey(request.json["private_key"])
         new_cert = SSLCertificate(certificate=certificate, created_by=user_id, encrypted_private_key=encrypted_private_key)
         db.session.add(new_cert)
@@ -142,9 +144,10 @@ def sign_csr():
             if cert_match:
                 existingCert = SSLCertificate.query.filter(SSLCertificate.certificate == certificate).first()
                 cert_str = cert_match.group(0)
-                new_cert = SSLCertificate(certificate=cert_str, is_csr=False, created_by=current_user.id)
-                new_cert.set_id(existingCert.id)
-                db.session.delete(existingCert)
+                new_cert = SSLCertificate(certificate=cert_str, is_csr=False, created_by=current_user.id, encrypted_private_key=existingCert.private_key)
+                if existingCert is not None:
+                    new_cert.set_id(existingCert.id)
+                    db.session.delete(existingCert)
                 db.session.add(new_cert)
                 db.session.commit()
         
@@ -465,7 +468,11 @@ def download_private_key(user_id, certificate_id):
                 file_name = f'{certificate.common_name}.pem'
                 f = Fernet(getDecodedCurrentUserPasscode())
                 obj = PrivateKey(private_key=certificate.private_key)
-                private_key = f.decrypt(obj.private_key).decode()
+                if(len(obj.private_key) < 1):
+                    return jsonify({
+                        "error": "Private key not present!"
+                    }), 500
+                private_key = f.decrypt(obj.private_key).decode("utf-8")
                 return jsonify({
                     "file": private_key,
                     "file_name": file_name
