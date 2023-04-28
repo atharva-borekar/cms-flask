@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import pdb
 from src.app import db
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend

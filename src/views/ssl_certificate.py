@@ -1,6 +1,5 @@
 import base64
 import os
-import pdb
 import re
 import subprocess
 from flask import request, jsonify
@@ -310,13 +309,6 @@ def get_certificates(user_id):
                     total_csr += 1
                 if cert.certificate_type == "certificate":
                     total_certificates += 1
-                
-            # cert = certificates[0]
-            # obj = PrivateKey(private_key=cert.private_key)
-            # print("obj",obj)
-            # f = Fernet(getDecodedCurrentUserPasscode())
-            # private_key = f.decrypt(obj.private_key)
-            # print("private_key",private_key)
             return jsonify({'data': certificates, "length": len(certificates), "length_certificates":total_certificates, "length_csr":total_csr }), 200
     except Exception as e:
         db.session.rollback()
