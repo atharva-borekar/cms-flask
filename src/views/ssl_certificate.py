@@ -71,8 +71,8 @@ def home():
 def add_certificate(user_id):
     try:
         certificate = request.json["certificate"]
-        private_key = request.json["private_key"]
-        encrypted_private_key = encryptPrivateKey(private_key)
+        if request.json["private_key"] is not None:
+            encrypted_private_key = encryptPrivateKey(request.json["private_key"])
         new_cert = SSLCertificate(certificate=certificate, created_by=user_id, encrypted_private_key=encrypted_private_key)
         db.session.add(new_cert)
         db.session.commit()
@@ -128,7 +128,6 @@ def sign_csr_util(csr):
     os.remove("ca.crt")
     os.remove("ca.key")
     os.remove("client.csr")
-    os.remove("csr.csr")
     return client_cert
 
 @jwt_required()
@@ -142,8 +141,11 @@ def sign_csr():
         if signed_certificate:
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", signed_certificate, re.DOTALL)
             if cert_match:
+                existingCert = SSLCertificate.query.filter(SSLCertificate.certificate == certificate).first()
                 cert_str = cert_match.group(0)
-                new_cert = SSLCertificate(certificate=cert_str, created_by=current_user.id)
+                new_cert = SSLCertificate(certificate=cert_str, is_csr=False, created_by=current_user.id)
+                new_cert.set_id(existingCert.id)
+                db.session.delete(existingCert)
                 db.session.add(new_cert)
                 db.session.commit()
         
@@ -178,6 +180,7 @@ def generate_csr_util(country, state, locality, organization_name, organization_
     # Read the contents of the CSR file
     with open('csr.csr', 'r') as f:
         csr = f.read()
+    os.remove('csr.csr')
         
     # Return the CSR in the response
     return csr, encrypted_private_key
@@ -206,7 +209,7 @@ def generate_csr():
         )
         
         if generated_csr:
-                csr = SSLCertificate(certificate=generated_csr, created_by=current_user.id, is_csr=True)
+                csr = SSLCertificate(certificate=generated_csr, created_by=current_user.id, is_csr=True, encrypted_private_key=encrypted_private_key)
                 db.session.add(csr)
                 db.session.commit()
                 return jsonify({

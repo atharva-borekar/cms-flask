@@ -77,7 +77,6 @@ class SSLCertificate(db.Model):
     issuer_organization_name = db.Column(db.String(128))
 
     def __init__(self, certificate, created_by, is_csr = False, encrypted_private_key = ""):
-
         self.certificate = certificate
         self.created_by = created_by
         self.certificate_type = "csr" if is_csr else "certificate"
@@ -117,5 +116,7 @@ class SSLCertificate(db.Model):
         self.signature_hash_algorithm = certificate.signature_hash_algorithm.name
         self.subject = certificate.subject.rfc4514_string()
         
+    def set_id(self, id:int):
+        self.id = id
         
         
