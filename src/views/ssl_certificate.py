@@ -427,10 +427,7 @@ def renew_certificate(user_id,certificate_id):
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
             if cert_match:
                 cert_str = cert_match.group(0)
-                certificate.renew_self(certificate=cert_str)
-                # db.session.delete(certificate)
-                # renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id, encrypted_private_key=encrypted_private_key)
-                # db.session.add(renewed_cert)
+                certificate.update_certificate(certificate=cert_str)
                 db.session.commit()
                 return jsonify({
                     "message": "Certificate renewed successfully!",
