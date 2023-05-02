@@ -136,7 +136,6 @@ def sign_csr_util(csr):
 def sign_csr():
     try:
         certificate = request.json["certificate"]
-        
         signed_certificate = sign_csr_util(certificate)
         
         if signed_certificate:
@@ -144,11 +143,8 @@ def sign_csr():
             if cert_match:
                 existingCert = SSLCertificate.query.filter(SSLCertificate.certificate == certificate).first()
                 cert_str = cert_match.group(0)
-                new_cert = SSLCertificate(certificate=cert_str, is_csr=False, created_by=current_user.id, encrypted_private_key=existingCert.private_key)
                 if existingCert is not None:
-                    new_cert.set_id(existingCert.id)
-                    db.session.delete(existingCert)
-                db.session.add(new_cert)
+                    existingCert.update_certificate(certificate=cert_str)
                 db.session.commit()
         
             return jsonify({
@@ -431,9 +427,10 @@ def renew_certificate(user_id,certificate_id):
             cert_match = re.search(r"-----BEGIN CERTIFICATE-----(.*?)-----END CERTIFICATE-----", certificate_string, re.DOTALL)
             if cert_match:
                 cert_str = cert_match.group(0)
-                db.session.delete(certificate)
-                renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id, encrypted_private_key=encrypted_private_key)
-                db.session.add(renewed_cert)
+                certificate.renew_self(certificate=cert_str)
+                # db.session.delete(certificate)
+                # renewed_cert = SSLCertificate(certificate=cert_str, created_by=user_id, encrypted_private_key=encrypted_private_key)
+                # db.session.add(renewed_cert)
                 db.session.commit()
                 return jsonify({
                     "message": "Certificate renewed successfully!",

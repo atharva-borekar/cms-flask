@@ -10,6 +10,71 @@ def getSubjectAttributeValue(arr):
     else:
         return ""
 
+def generateSslCertUtil(self, certificate:str, is_csr=False):
+    self.certificate = certificate
+    
+    certificate_type = "csr" if is_csr else "certificate"
+    self.certificate_type = certificate_type
+    
+    certificate = x509.load_pem_x509_csr(certificate.encode('utf-8'), default_backend()) if is_csr else x509.load_pem_x509_certificate(certificate.encode(), default_backend())
+    subject = certificate.subject
+    
+    country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
+    state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
+    email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
+    common_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
+    organization_unit = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
+    organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
+    locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
+    
+    self.country = country
+    self.state = state
+    self.email = email
+    self.common_name = common_name
+    self.organization_unit =  organization_unit
+    self.organization_name =  organization_name
+    self.locality =  locality
+    
+    if not is_csr:
+        issuer = certificate.issuer
+        issuer_country = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
+        issuer_state = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
+        issuer_email = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
+        issuer_common_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
+        issuer_organization_unit = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
+        issuer_organization_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
+        issuer_locality = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
+    
+        self.issuer_country = issuer_country
+        self.issuer_state = issuer_state
+        self.issuer_email = issuer_email
+        self.issuer_common_name = issuer_common_name
+        self.issuer_organization_unit = issuer_organization_unit
+        self.issuer_organization_name = issuer_organization_name
+        self.issuer_locality = issuer_locality
+
+        not_valid_after = certificate.not_valid_after.isoformat()
+        not_valid_before = certificate.not_valid_before.isoformat()
+        issuer = certificate.issuer.rfc4514_string()
+        
+        self.not_valid_after = not_valid_after
+        self.not_valid_before = not_valid_before
+        self.issuer = issuer
+        
+        version = certificate.version.name
+        serial_number = certificate.serial_number
+        signature = certificate.signature
+        
+        self.version = version
+        self.serial_number = serial_number
+        self.signature = signature
+        
+    signature_hash_algorithm = certificate.signature_hash_algorithm.name
+    subject = certificate.subject.rfc4514_string()
+        
+    self.signature_hash_algorithm = signature_hash_algorithm
+    self.subject = subject
+        
 @dataclass
 class SSLCertificate(db.Model):
     __tablename__ = 'sslcertificate'
@@ -76,46 +141,10 @@ class SSLCertificate(db.Model):
     issuer_organization_name = db.Column(db.String(128))
 
     def __init__(self, certificate, created_by, is_csr = False, encrypted_private_key = ""):
-        self.certificate = certificate
         self.created_by = created_by
-        self.certificate_type = "csr" if is_csr else "certificate"
-        
-        certificate = x509.load_pem_x509_csr(certificate.encode('utf-8'), default_backend()) if is_csr else x509.load_pem_x509_certificate(certificate.encode(), default_backend())
-        subject = certificate.subject
-        
         self.private_key = encrypted_private_key
+        generateSslCertUtil(self, certificate=certificate, is_csr=is_csr)
         
-        
-        self.country = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
-        self.state = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
-        self.email = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
-        self.common_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
-        self.organization_unit = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
-        self.organization_name = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
-        self.locality = getSubjectAttributeValue(subject.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
-        
-        if not is_csr:
-            issuer = certificate.issuer
-            self.issuer_country = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COUNTRY_NAME))
-            self.issuer_state = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.STATE_OR_PROVINCE_NAME))
-            self.issuer_email = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.EMAIL_ADDRESS))
-            self.issuer_common_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.COMMON_NAME))
-            self.issuer_organization_unit = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATIONAL_UNIT_NAME))
-            self.issuer_organization_name = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.ORGANIZATION_NAME))
-            self.issuer_locality = getSubjectAttributeValue(issuer.get_attributes_for_oid(x509.NameOID.LOCALITY_NAME))
-        
-            self.not_valid_after = certificate.not_valid_after.isoformat()
-            self.not_valid_before = certificate.not_valid_before.isoformat()
-            self.issuer = certificate.issuer.rfc4514_string()
-            
-            self.version = certificate.version.name
-            self.serial_number = certificate.serial_number
-            self.signature = certificate.signature
-            
-        self.signature_hash_algorithm = certificate.signature_hash_algorithm.name
-        self.subject = certificate.subject.rfc4514_string()
-        
-    def set_id(self, id:int):
-        self.id = id
-        
+    def update_certificate(self, certificate):
+        generateSslCertUtil(self=self, certificate=certificate)
         
